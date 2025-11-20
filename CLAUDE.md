@@ -195,7 +195,76 @@ In Docker, environment variables are passed via `docker-compose.yaml` and `.env`
 4. Apply: `uv run alembic upgrade head`
 5. Migration runs automatically on API container startup via entrypoint script
 
+### E2E Testing
+
+Automated E2E tests verify the entire pipeline from RabbitMQ → Consumer → API → Database.
+
+#### Quick Start (with pytest)
+
+```bash
+# Start all services
+docker compose up -d
+
+# Wait for services to be healthy
+sleep 15
+
+# Run E2E tests
+cd src/api
+uv sync --group dev
+uv run pytest tests/test_e2e_pipeline.py -v
+```
+
+**Expected output**: All tests pass with status like `test_service_health_checks PASSED`, `test_full_pipeline PASSED`, etc.
+
+#### Standalone Test Script (no pytest required)
+
+```bash
+# Start all services
+docker compose up -d
+
+# Run standalone test from project root
+python scripts/e2e_test.py
+```
+
+This script:
+- Checks all services are healthy (RabbitMQ, PostgreSQL, API, Metabase)
+- Publishes a test weather message to RabbitMQ
+- Waits up to 60 seconds for the message to flow through Consumer → API → Database
+- Verifies the record was created with correct fields
+
+**Expected output**:
+```
+Weather Pipeline E2E Test
+Testing pipeline: RabbitMQ → Consumer → API → PostgreSQL
+
+Configuration:
+  API URL: http://localhost:8000
+  RabbitMQ: localhost:5672 (queue: weather)
+  PostgreSQL: localhost:5432/weather_db
+  Metabase: http://localhost:3000
+
+Phase 1: Service Health Checks
+✓ RabbitMQ healthy (localhost:5672)
+✓ API healthy (http://localhost:8000)
+✓ PostgreSQL healthy (localhost:5432)
+✓ Metabase healthy (http://localhost:3000)
+All critical services healthy!
+
+Phase 2: Full Pipeline Test
+...
+✓ E2E test PASSED! Pipeline is working correctly.
+```
+
 ### Testing the full pipeline locally
+
+Run automated E2E tests (recommended) or manual steps:
+
+**Automated (recommended):**
+```bash
+cd src/api && uv run pytest tests/test_e2e_pipeline.py -v
+```
+
+**Manual verification:**
 1. Start services: `docker compose up -d`
 2. Verify API is up: `curl http://localhost:8000/health`
 3. Check database has tables: `docker exec docker-postgres-1 psql -U weather_user -d weather_db -c "\dt"`
@@ -224,6 +293,32 @@ docker exec -it docker-api-1 /bin/bash
 # Test API endpoint
 curl -X GET http://localhost:8000/api/weather?page=1&page_size=10
 curl -X GET http://localhost:8000/health
+```
+
+### E2E Test Troubleshooting
+
+| Issue | Solution |
+|-------|----------|
+| **"Consumer did not process message in time"** | Check consumer is running: `docker compose logs consumer`. Verify RABBIT_HOST and QUEUE_NAME env vars. Consumer may be slow to start; wait 10-15 seconds after `docker compose up`. |
+| **"RabbitMQ unreachable"** | Verify RabbitMQ is running: `docker compose ps rabbit-mq`. Check port 5672 is accessible. If using docker-compose, use `rabbit-mq` as hostname not `localhost`. |
+| **"PostgreSQL unreachable"** | Verify PostgreSQL is running and healthy: `docker compose ps postgres`. Check password and user in `.env`. Run migrations: `docker exec docker-api-1 uv run alembic upgrade head`. |
+| **"API health check failed"** | Verify API container is running: `docker compose logs api`. Check migrations ran. Verify POSTGRES_* env vars match database. |
+| **Database connection refused** | Ensure PostgreSQL is healthy: `docker compose exec postgres pg_isready`. If unhealthy, reinitialize: `docker compose down -v && docker compose up -d postgres && sleep 10`. |
+| **Test hangs waiting for message** | Consumer not connected. Check consumer logs: `docker compose logs consumer`. Verify it says "Listening for messages on queue 'weather'". |
+| **API returns 500 on weather POST** | Check API logs: `docker compose logs api`. May be database schema issue. Run: `docker compose exec api uv run alembic upgrade head` and retry. |
+| **pytest collection fails** | Install dev dependencies: `cd src/api && uv sync --group dev`. Verify Python 3.11+: `python --version`. |
+
+**Quick reset if stuck:**
+```bash
+# Stop and remove all volumes (clears database state)
+docker compose down -v
+
+# Start fresh with a short wait
+docker compose up -d
+sleep 20
+
+# Try test again
+python scripts/e2e_test.py
 ```
 
 ## Key Implementation Details

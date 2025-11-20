@@ -328,6 +328,98 @@ cd src/consumer
 uv run python -m consumer_app.message_processor
 ```
 
+## E2E Testing
+
+### Overview
+
+Automated end-to-end tests verify that the full pipeline works correctly: Producer → RabbitMQ → Consumer → API → PostgreSQL.
+
+### Quick Start
+
+**Option 1: Using pytest (Recommended)**
+```bash
+# Start all services
+docker compose up -d
+
+# Wait for services to be healthy
+sleep 15
+
+# Install dev dependencies and run tests
+cd src/api
+uv sync --group dev
+uv run pytest tests/test_e2e_pipeline.py -v
+```
+
+**Expected output**: All 5 tests should pass
+```
+test_service_health_checks PASSED
+test_full_pipeline PASSED
+test_upsert_idempotency PASSED
+test_api_accepts_weather_data PASSED
+test_api_weather_record_retrieval PASSED
+
+======================= 5 passed in ~60s =======================
+```
+
+**Option 2: Using standalone script (no pytest required)**
+```bash
+# Start all services
+docker compose up -d
+
+# Wait for services to be healthy
+sleep 15
+
+# Run standalone test
+python scripts/e2e_test.py
+```
+
+**Expected output**:
+```
+Weather Pipeline E2E Test
+Testing pipeline: RabbitMQ → Consumer → API → PostgreSQL
+
+Phase 1: Service Health Checks
+✓ RabbitMQ healthy (localhost:5672)
+✓ API healthy (http://localhost:8000)
+✓ PostgreSQL healthy (localhost:5432)
+✓ Metabase healthy (http://localhost:3000)
+
+Phase 2: Full Pipeline Test
+✓ Message published to queue 'weather'
+✓ Record created in database (ID: 1234)
+
+✓ E2E test PASSED! Pipeline is working correctly.
+```
+
+### What the Tests Verify
+
+1. **Service Health**: All services (RabbitMQ, PostgreSQL, API, Metabase) are healthy and responsive
+2. **Full Pipeline**: Message flows correctly through RabbitMQ → Consumer → API → Database
+3. **Record Creation**: Weather data is properly stored with correct field values
+4. **Upsert Idempotency**: Duplicate messages don't create duplicate records (deduplication works)
+5. **API Endpoints**: All API endpoints return correct status codes and data
+
+### Test Details
+
+- **test_service_health_checks**: Verifies all services are running and healthy
+- **test_full_pipeline**: Complete integration test - publishes message to RabbitMQ and verifies it appears in database (60s timeout)
+- **test_upsert_idempotency**: Publishes same message twice, verifies only 1 record is created and `updated_at` changes
+- **test_api_accepts_weather_data**: Tests API directly with weather data, expects 201 Created
+- **test_api_weather_record_retrieval**: Tests retrieving records via API GET endpoint
+
+### Troubleshooting E2E Tests
+
+| Issue | Solution |
+|-------|----------|
+| **"Consumer did not process message in time"** | Consumer needs time to start. Wait 15+ seconds after `docker compose up`. Check `docker compose logs consumer` for connection errors. |
+| **"RabbitMQ unreachable"** | Verify RabbitMQ is running: `docker compose ps rabbit-mq`. Check logs: `docker compose logs rabbit-mq`. |
+| **"PostgreSQL unreachable"** | Verify PostgreSQL is healthy: `docker compose ps postgres`. Check logs: `docker compose logs postgres`. |
+| **"API health check failed"** | Verify API container is running: `docker compose logs api`. Check migrations ran. |
+| **"Test timed out waiting for message"** | Consumer may be hung. Check logs and restart: `docker compose restart consumer`. |
+| **pytest collection fails** | Install dev dependencies: `cd src/api && uv sync --group dev`. Verify Python 3.11+. |
+
+For more details, see the E2E Testing section in [CLAUDE.md](CLAUDE.md#e2e-testing).
+
 ## Troubleshooting
 
 ### Database Connection Issues
