@@ -13,3 +13,16 @@ services:
       - ../.env
     environment:
         RABBIT_HOST: rabbit-mq
+    depends_on:
+      - rabbit-mq
+  consumer:
+    build:
+      context: ../src/
+      dockerfile: Dockerfile-consumer
+    env_file:
+      - ../.env
+    environment:
+        RABBIT_HOST: rabbit-mq
+        API_URL: http://api:8000/api/weather
+    depends_on:
+      - rabbit-mq

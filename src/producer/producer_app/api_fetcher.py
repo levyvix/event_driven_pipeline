@@ -38,6 +38,20 @@ class ApiFetcher:
         logger.success("Data sent to RabbitMQ")
 
 
+import time
+from datetime import datetime, timedelta
+
 if __name__ == "__main__":
     api_fetcher = ApiFetcher()
-    api_fetcher.send_data(api_fetcher.get_data())
+    while True:
+        try:
+            api_fetcher.send_data(api_fetcher.get_data())
+        except Exception as e:
+            logger.error(f"An error occurred: {e}")
+        
+        now = datetime.now()
+        next_hour = (now + timedelta(hours=1)).replace(minute=0, second=0, microsecond=0)
+        seconds_to_sleep = (next_hour - now).total_seconds()
+        
+        logger.info(f"Sleeping for {seconds_to_sleep:.2f} seconds until {next_hour}...")
+        time.sleep(seconds_to_sleep)

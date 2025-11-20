@@ -14,7 +14,7 @@ This document defines the agents (services) within the event-driven pipeline.
 - **Description**: Consumes messages from RabbitMQ and sends them to the internal API.
 - **Inputs**: RabbitMQ
 - **Outputs**: Internal API (HTTP POST)
-- **Status**: Planned
+- **Status**: Implemented (`src/consumer`)
 
 ## 3. API
 - **Role**: Data Persistence
