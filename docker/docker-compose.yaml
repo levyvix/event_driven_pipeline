@@ -1,0 +1,15 @@
+
+services:
+  rabbit-mq:
+    image: rabbitmq
+    ports:
+      - 5672:5672
+      - 15672:15672
+  producer:
+    build:
+      context: ../src/
+      dockerfile: Dockerfile-producer
+    env_file:
+      - ../.env
+    environment:
+        RABBIT_HOST: rabbit-mq
