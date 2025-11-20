@@ -297,6 +297,47 @@ curl http://localhost:8000/api/weather/location/New%20York/latest
 curl http://localhost:8000/health
 ```
 
+## Code Quality
+
+### Pre-commit Hooks
+
+Pre-commit hooks automatically run code quality checks before each commit, ensuring consistent code style and catching common issues.
+
+**Setup (one-time):**
+```bash
+cd src/api
+uv sync --group dev    # Install dev dependencies (includes pre-commit)
+uv run pre-commit install  # Install git hooks
+```
+
+**Usage:**
+```bash
+# Automatic on commit
+git add .
+git commit -m "your message"  # Hooks run automatically ✨
+
+# Manual run
+cd src/api && uv run pre-commit run --all-files
+
+# Update hook versions
+cd src/api && uv run pre-commit autoupdate
+```
+
+**What it checks:**
+- ✓ Code formatting (ruff format)
+- ✓ Linting (ruff check) - unused imports, style issues
+- ✓ File hygiene - trailing whitespace, end-of-file fixing
+- ✓ Validation - YAML, JSON, TOML syntax
+- ✓ Security - detects private keys, merge conflicts, large files (>1MB)
+
+**Failing checks:**
+- Most issues are auto-fixed (ruff formatting, whitespace cleanup)
+- If a check fails, it will show the error. Fix and commit again
+- Use `cd src/api && uv run ruff check --fix` to manually fix issues
+
+**CI/CD:**
+Hooks also run in GitHub Actions on every push/PR via `.github/workflows/pre-commit.yml`
+
 ## Development
 
 ### Local Setup (Without Docker)
