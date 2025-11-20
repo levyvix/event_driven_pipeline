@@ -1,0 +1,37 @@
+# Pre-commit hooks for weather pipeline
+# Install hooks: cd src/api && uv run pre-commit install (from API directory)
+# Run manually: cd src/api && uv run pre-commit run --all-files
+# Update hooks: cd src/api && uv run pre-commit autoupdate
+
+repos:
+  # Standard hooks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-json
+      - id: check-toml
+      - id: check-added-large-files
+        args: ['--maxkb=1000']
+      - id: check-merge-conflict
+      - id: detect-private-key
+
+  # Ruff via uv (API linting)
+  - repo: local
+    hooks:
+      - id: ruff-check
+        name: ruff lint
+        entry: bash -c 'cd src/api && uv run ruff check api_app ../../scripts'
+        language: system
+        types: [python]
+        pass_filenames: false
+
+      # Ruff formatting
+      - id: ruff-format
+        name: ruff format
+        entry: bash -c 'cd src/api && uv run ruff format api_app ../../scripts'
+        language: system
+        types: [python]
+        pass_filenames: false

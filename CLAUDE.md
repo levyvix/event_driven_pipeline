@@ -57,6 +57,39 @@ docker exec docker-postgres-1 psql -U weather_user -d weather_db -c "\dt"
 # Navigate to http://localhost:3000 in your browser
 ```
 
+## Pre-commit Setup
+
+Pre-commit hooks ensure code quality by running linters and formatters automatically on commit.
+
+### First-time setup
+
+```bash
+cd src/api
+uv sync --group dev  # Install dev dependencies (includes pre-commit)
+uv run pre-commit install  # Install git hooks
+```
+
+### Running pre-commit
+
+```bash
+# Run on all files
+cd src/api && uv run pre-commit run --all-files
+
+# Run automatically on git commit
+git add .
+git commit -m "your message"  # hooks run automatically
+
+# Update hook versions to latest
+cd src/api && uv run pre-commit autoupdate
+```
+
+### What pre-commit checks
+
+- **Standard hooks**: Trailing whitespace, end-of-file fixing, YAML/JSON/TOML validation
+- **Ruff linting**: Code quality checks on API and scripts (unused imports, style issues)
+- **Ruff formatting**: Automatic code formatting on all Python files
+- **Security**: Detects private keys, merge conflicts, large files (>1MB)
+
 ## Metabase Dashboard (Optional)
 
 Metabase is a lightweight BI tool for visualizing weather data without writing SQL. It's optional—all data remains accessible via API queries.

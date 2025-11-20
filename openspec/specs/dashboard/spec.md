@@ -89,4 +89,3 @@ The system SHALL load PostgreSQL connection credentials from environment variabl
 - **WHEN** environment variables are missing or invalid
 - **THEN** Metabase starts and presents connection setup UI
 - **AND** user can enter credentials manually through the web interface
-

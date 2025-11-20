@@ -107,4 +107,3 @@ When: Developer runs `python scripts/e2e_test.py`
 Then: Script fails with clear message indicating which service is unreachable
 And: Script suggests: `docker compose up -d` to start services
 ```
-

@@ -1,32 +1,67 @@
+from __future__ import annotations
+
 import json
-from loguru import logger
-import requests
-from consumer_app.config import settings
+from typing import Any
+
 import pika
+import requests
+from loguru import logger
+
+from .config import settings
 
 
 class MessageConsumer:
-    def __init__(self):
+    """
+    RabbitMQ message consumer that processes weather data.
+
+    Receives messages from a RabbitMQ queue, parses JSON weather data,
+    and forwards it to the internal weather API. Uses manual acknowledgment
+    for reliability with retry logic for transient failures.
+    """
+
+    def __init__(self) -> None:
+        """Initialize RabbitMQ connection and channel."""
         logger.info("Connecting to RabbitMQ")
-        self.connection = pika.BlockingConnection(
+        self.connection: pika.BlockingConnection = pika.BlockingConnection(
             pika.ConnectionParameters(host=settings.RABBIT_HOST)
         )
-        self.channel = self.connection.channel()
+        self.channel: pika.adapters.blocking_connection.BlockingChannel = (
+            self.connection.channel()
+        )
         self.channel.queue_declare(queue=settings.QUEUE_NAME)
         logger.success("Connected to RabbitMQ")
 
-    def callback(self, ch, method, properties, body):
-        """Callback function to process messages from the queue"""
+    def callback(
+        self,
+        channel: pika.adapters.blocking_connection.BlockingChannel,
+        method: pika.spec.Basic.Deliver,
+        properties: pika.spec.BasicProperties,
+        body: bytes,
+    ) -> None:
+        """
+        Process a message from the RabbitMQ queue.
+
+        Attempts to parse message JSON and post it to the internal API.
+        On success, acknowledges the message. On JSON decode errors,
+        rejects without requeue (discards malformed messages).
+        On network errors, rejects with requeue for retry.
+
+        Args:
+            channel: RabbitMQ channel
+            method: AMQP method frame
+            properties: AMQP message properties
+            body: Raw message body bytes
+        """
         try:
             logger.info("Received message from RabbitMQ")
             logger.debug(f"Message body: {body}")
 
             # Parse the message
-            message_data = json.loads(body)
+            message_data: dict[str, Any] = json.loads(body)
 
             # Send to internal API
             logger.info(f"Sending data to API: {settings.API_URL}")
-            response = requests.post(
+            response: requests.Response = requests.post(
                 settings.API_URL,
                 json=message_data,
                 headers={"Content-Type": "application/json"},
@@ -39,26 +74,32 @@ class MessageConsumer:
             )
 
             # Acknowledge the message
-            ch.basic_ack(delivery_tag=method.delivery_tag)
+            channel.basic_ack(delivery_tag=method.delivery_tag)
             logger.info("Message acknowledged")
 
-        except json.JSONDecodeError as e:
-            logger.error(f"Failed to decode message: {e}")
+        except json.JSONDecodeError as decode_error:
+            logger.error(f"Failed to decode message JSON: {decode_error}")
             # Reject and don't requeue malformed messages
-            ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
+            channel.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
 
-        except requests.exceptions.RequestException as e:
-            logger.error(f"Failed to send data to API: {e}")
+        except requests.exceptions.RequestException as request_error:
+            logger.error(f"Failed to send data to API: {request_error}")
             # Reject and requeue for retry
-            ch.basic_nack(delivery_tag=method.delivery_tag, requeue=True)
+            channel.basic_nack(delivery_tag=method.delivery_tag, requeue=True)
 
-        except Exception as e:
-            logger.error(f"Unexpected error processing message: {e}")
+        except Exception as unexpected_error:
+            logger.error(f"Unexpected error processing message: {unexpected_error}")
             # Reject and requeue for retry
-            ch.basic_nack(delivery_tag=method.delivery_tag, requeue=True)
+            channel.basic_nack(delivery_tag=method.delivery_tag, requeue=True)
 
-    def start_consuming(self):
-        """Start consuming messages from the queue"""
+    def start_consuming(self) -> None:
+        """
+        Start consuming messages from the configured queue.
+
+        Processes one message at a time (prefetch_count=1) with manual
+        acknowledgment for reliability. Handles graceful shutdown on
+        KeyboardInterrupt.
+        """
         logger.info(f"Starting to consume messages from queue: {settings.QUEUE_NAME}")
 
         # Set QoS to process one message at a time

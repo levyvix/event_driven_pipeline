@@ -9,7 +9,6 @@ import json
 import os
 import sys
 import time
-from pathlib import Path
 
 try:
     import httpx
@@ -84,9 +83,7 @@ def check_rabbitmq_health() -> bool:
     """Check if RabbitMQ is healthy"""
     try:
         connection = pika.BlockingConnection(
-            pika.ConnectionParameters(
-                RABBIT_HOST, RABBIT_PORT, heartbeat=5, connection_attempts=1
-            )
+            pika.ConnectionParameters(RABBIT_HOST, RABBIT_PORT, heartbeat=5, connection_attempts=1)
         )
         connection.close()
         print_success(f"RabbitMQ healthy ({RABBIT_HOST}:{RABBIT_PORT})")
@@ -223,9 +220,7 @@ async def test_pipeline() -> bool:
         )
         channel = connection.channel()
         channel.queue_declare(queue=QUEUE_NAME)
-        channel.basic_publish(
-            exchange="", routing_key=QUEUE_NAME, body=json.dumps(test_message)
-        )
+        channel.basic_publish(exchange="", routing_key=QUEUE_NAME, body=json.dumps(test_message))
         connection.close()
         print_success(f"Message published to queue '{QUEUE_NAME}'")
     except Exception as e:
@@ -247,7 +242,8 @@ async def test_pipeline() -> bool:
             with engine.connect() as conn:
                 result = conn.execute(
                     text(
-                        "SELECT id, temp_c, humidity FROM weather_records WHERE localtime_epoch = :epoch"
+                        "SELECT id, temp_c, humidity FROM weather_records "
+                        "WHERE localtime_epoch = :epoch"
                     ),
                     {"epoch": localtime_epoch},
                 )
@@ -280,7 +276,7 @@ async def test_pipeline() -> bool:
 async def main():
     """Run all checks"""
     print(f"\n{BOLD}Weather Pipeline E2E Test{RESET}")
-    print(f"Testing pipeline: RabbitMQ → Consumer → API → PostgreSQL")
+    print("Testing pipeline: RabbitMQ → Consumer → API → PostgreSQL")
     print(f"\n{BOLD}Configuration:{RESET}")
     print_info(f"API URL: {API_URL}")
     print_info(f"RabbitMQ: {RABBIT_HOST}:{RABBIT_PORT} (queue: {QUEUE_NAME})")
@@ -322,8 +318,14 @@ async def main():
         print_info("1. Verify all services are running: docker compose ps")
         print_info("2. Check consumer logs: docker compose logs consumer")
         print_info("3. Check API logs: docker compose logs api")
-        print_info("4. Verify RabbitMQ queue: docker exec docker-rabbit-mq-1 rabbitmq-admin list queues")
-        print_info("5. Check database records: docker exec docker-postgres-1 psql -U $POSTGRES_USER -d $POSTGRES_DB -c 'SELECT COUNT(*) FROM weather_records'")
+        print_info(
+            "4. Verify RabbitMQ queue: docker exec docker-rabbit-mq-1 rabbitmq-admin list queues"
+        )
+        print_info(
+            "5. Check database records: docker exec docker-postgres-1 psql "
+            "-U $POSTGRES_USER -d $POSTGRES_DB -c 'SELECT COUNT(*) FROM "
+            "weather_records'"
+        )
         return False
 
 

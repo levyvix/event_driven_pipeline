@@ -2,9 +2,6 @@
 
 import asyncio
 import json
-import os
-import time
-from typing import Any
 
 import httpx
 import pika
@@ -12,9 +9,7 @@ import pytest
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import Session
 
-from api_app.config import settings
 from api_app.models import WeatherRecord
-
 
 # ========================
 # Health Check Functions
@@ -325,9 +320,7 @@ async def test_upsert_idempotency(test_client, test_db_session: Session, rabbitm
 
     # Verify created_at didn't change
     updated_record = (
-        test_db_session.query(WeatherRecord)
-        .filter(WeatherRecord.id == record_1_id)
-        .first()
+        test_db_session.query(WeatherRecord).filter(WeatherRecord.id == record_1_id).first()
     )
     assert updated_record.created_at == created_at_1, "created_at should not change on upsert"
     assert updated_record.updated_at >= updated_at_1, "updated_at should be updated on upsert"

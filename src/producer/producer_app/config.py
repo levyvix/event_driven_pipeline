@@ -1,26 +1,60 @@
-from pydantic_settings import BaseSettings
+"""Configuration for the weather data producer service."""
+
+from __future__ import annotations
+
 from pathlib import Path
 
-# Get the directory where this file is located
-current_file_dir = Path(__file__).parent.resolve()
+from pydantic import BaseSettings, ConfigDict
 
-# Calculate the project root directory (assuming this file is at src/producer/producer_app/config.py)
-# We want to go up 3 levels to reach the root: producer_app -> producer -> src -> root
-project_root = current_file_dir.parent.parent.parent
+
+def _get_project_root() -> Path:
+    """
+    Calculate the project root directory.
+
+    Assumes this file is at src/producer/producer_app/config.py.
+    Navigates up 3 levels to reach the project root.
+
+    Returns:
+        Path to the project root directory
+    """
+    current_file_dir: Path = Path(__file__).parent.resolve()
+    # producer_app -> producer -> src -> root
+    return current_file_dir.parent.parent.parent
 
 
 class Settings(BaseSettings):
+    """
+    Producer service configuration.
+
+    Loads settings from environment variables or .env file.
+    All settings have sensible defaults except for the API key.
+    """
+
+    # API Configuration
     API_KEY: str
-    QUEUE_NAME: str = "weather"
+    """OpenWeather API key (required, no default)"""
+
     BASE_URL: str = "http://api.weatherapi.com/v1/current.json"
+    """Base URL for weather API"""
+
     LAT: float = -20.329704
+    """Default latitude for weather queries (Vitoria, Brazil)"""
+
     LON: float = -40.292017
+    """Default longitude for weather queries (Vitoria, Brazil)"""
+
+    # RabbitMQ Configuration
+    QUEUE_NAME: str = "weather"
+    """RabbitMQ queue name"""
+
     RABBIT_HOST: str = "localhost"
+    """RabbitMQ host address"""
 
-    class Config:
-        env_file = str(project_root / ".env")
-        env_file_encoding = "utf-8"
-        extra = "ignore"
+    model_config = ConfigDict(
+        env_file=str(_get_project_root() / ".env"),
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
 
 
-settings = Settings()
+settings: Settings = Settings()

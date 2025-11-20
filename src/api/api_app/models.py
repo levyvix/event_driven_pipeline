@@ -1,9 +1,13 @@
+"""SQLAlchemy ORM models for weather data storage."""
+
+from __future__ import annotations
+
 from datetime import datetime
 
 from sqlalchemy import Column, DateTime, Float, ForeignKey, Index, Integer, String
 from sqlalchemy.orm import relationship
 
-from api_app.database import Base
+from .database import Base
 
 
 class Location(Base):

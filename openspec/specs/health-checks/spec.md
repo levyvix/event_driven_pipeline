@@ -126,4 +126,3 @@ Then: Service logs error message with:
   - Why it failed (e.g., "Connection refused at postgres:5432")
   - What was expected (e.g., "Expected PostgreSQL at postgres:5432")
 ```
-

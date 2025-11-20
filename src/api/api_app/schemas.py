@@ -1,3 +1,7 @@
+"""Pydantic schemas for request/response validation."""
+
+from __future__ import annotations
+
 from datetime import datetime
 
 from pydantic import BaseModel, Field
@@ -5,14 +9,25 @@ from pydantic import BaseModel, Field
 
 # Location schemas
 class LocationBase(BaseModel):
-    """Base schema for location data (without localtime)"""
+    """Base schema for location data (without localtime)."""
 
     name: str
+    """Location name"""
+
     region: str
+    """Region/state name"""
+
     country: str
+    """Country name"""
+
     lat: float
+    """Latitude coordinate"""
+
     lon: float
+    """Longitude coordinate"""
+
     tz_id: str
+    """Timezone ID (e.g., America/New_York)"""
 
 
 class LocationInput(LocationBase):

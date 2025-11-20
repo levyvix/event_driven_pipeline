@@ -1,11 +1,11 @@
 """Pytest configuration and fixtures for E2E testing"""
 
 import os
-from typing import Generator
+from collections.abc import Generator
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine, event, text
+from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from api_app.config import settings
@@ -42,8 +42,8 @@ def test_db_session(test_db_engine) -> Generator[Session, None, None]:
     transaction = connection.begin()
 
     # Create session bound to this connection
-    SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=connection)
-    session = SessionLocal()
+    session_local = sessionmaker(autocommit=False, autoflush=False, bind=connection)
+    session = session_local()
 
     yield session
 
@@ -61,6 +61,7 @@ def test_client(test_db_session: Session) -> TestClient:
         yield test_db_session
 
     from api_app.database import get_db
+
     app.dependency_overrides[get_db] = override_get_db
 
     client = TestClient(app)

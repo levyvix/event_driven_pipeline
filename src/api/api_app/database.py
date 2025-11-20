@@ -1,8 +1,13 @@
-from sqlalchemy import create_engine
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
+"""Database connection and session management."""
 
-from api_app.config import settings
+from __future__ import annotations
+
+from collections.abc import Generator
+
+from sqlalchemy import create_engine
+from sqlalchemy.orm import Session, declarative_base, sessionmaker
+
+from .config import settings
 
 # Create database engine
 engine = create_engine(
@@ -13,15 +18,23 @@ engine = create_engine(
 )
 
 # Create session factory
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+SessionLocal: sessionmaker[Session] = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 # Create base class for models
 Base = declarative_base()
 
 
-def get_db():
-    """Dependency to get database session"""
-    db = SessionLocal()
+def get_db() -> Generator[Session, None, None]:
+    """
+    Dependency to get database session.
+
+    Creates a new database session for each request and ensures it is
+    properly closed afterward, even if an exception occurs.
+
+    Yields:
+        SQLAlchemy database session
+    """
+    db: Session = SessionLocal()
     try:
         yield db
     finally:
