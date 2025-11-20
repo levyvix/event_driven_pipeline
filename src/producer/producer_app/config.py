@@ -8,6 +8,7 @@ current_file_dir = Path(__file__).parent.resolve()
 # We want to go up 3 levels to reach the root: producer_app -> producer -> src -> root
 project_root = current_file_dir.parent.parent.parent
 
+
 class Settings(BaseSettings):
     API_KEY: str
     QUEUE_NAME: str = "weather"
@@ -20,5 +21,6 @@ class Settings(BaseSettings):
         env_file = str(project_root / ".env")
         env_file_encoding = "utf-8"
         extra = "ignore"
+
 
 settings = Settings()

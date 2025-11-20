@@ -5,14 +5,10 @@ WORKDIR /app
 # Install uv
 RUN pip install uv
 
-# Copy dependency files first for caching
+# Copy the producer application into the container
+COPY producer /app/producer
+
 COPY producer/pyproject.toml producer/uv.lock ./
 
-# Install dependencies
-RUN uv sync --frozen
-
-# Copy the rest of the application
-COPY producer/ .
-
 # Run the application
-CMD ["uv", "run", "python", "-m", "producer_app.api_fetcher"]
+CMD ["uv", "run", "-m", "producer.producer_app.api_fetcher"]
