@@ -5,6 +5,45 @@ services:
     ports:
       - 5672:5672
       - 15672:15672
+    networks:
+      - weather-network
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: weather_user
+      POSTGRES_PASSWORD: weather_password
+      POSTGRES_DB: weather_db
+    ports:
+      - 5432:5432
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - weather-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U weather_user -d weather_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: ../src/
+      dockerfile: Dockerfile-api
+    environment:
+      POSTGRES_USER: weather_user
+      POSTGRES_PASSWORD: weather_password
+      POSTGRES_DB: weather_db
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+    ports:
+      - 8000:8000
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - weather-network
+
   producer:
     build:
       context: ../src/
@@ -15,6 +54,9 @@ services:
         RABBIT_HOST: rabbit-mq
     depends_on:
       - rabbit-mq
+    networks:
+      - weather-network
+
   consumer:
     build:
       context: ../src/
@@ -26,3 +68,31 @@ services:
         API_URL: http://api:8000/api/weather
     depends_on:
       - rabbit-mq
+      - api
+    networks:
+      - weather-network
+
+  metabase:
+    image: metabase/metabase:latest
+    ports:
+      - 3000:3000
+    environment:
+      # Metabase uses H2 embedded database by default (no setup needed)
+      # Connection to weather data PostgreSQL database (for data analysis)
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: weather_user
+      POSTGRES_PASSWORD: weather_password
+      POSTGRES_DB: weather_db
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - weather-network
+
+networks:
+  weather-network:
+    driver: bridge
+
+volumes:
+  postgres-data:
