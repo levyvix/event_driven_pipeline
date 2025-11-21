@@ -1,4 +1,4 @@
-from __future__ import annotations
+"""Message consumer for weather data."""
 
 import json
 from typing import Any
@@ -25,17 +25,15 @@ class MessageConsumer:
         self.connection: pika.BlockingConnection = pika.BlockingConnection(
             pika.ConnectionParameters(host=settings.RABBIT_HOST)
         )
-        self.channel: pika.adapters.blocking_connection.BlockingChannel = (
-            self.connection.channel()
-        )
+        self.channel = self.connection.channel()
         self.channel.queue_declare(queue=settings.QUEUE_NAME)
         logger.success("Connected to RabbitMQ")
 
     def callback(
         self,
-        channel: pika.adapters.blocking_connection.BlockingChannel,
-        method: pika.spec.Basic.Deliver,
-        properties: pika.spec.BasicProperties,
+        channel,
+        method,
+        properties,
         body: bytes,
     ) -> None:
         """
@@ -57,7 +55,7 @@ class MessageConsumer:
             logger.debug(f"Message body: {body}")
 
             # Parse the message
-            message_data: dict[str, Any] = json.loads(body)
+            message_data: dict = json.loads(body)
 
             # Send to internal API
             logger.info(f"Sending data to API: {settings.API_URL}")
@@ -74,13 +72,16 @@ class MessageConsumer:
             )
 
             # Acknowledge the message
-            channel.basic_ack(delivery_tag=method.delivery_tag)
-            logger.info("Message acknowledged")
+            if channel.is_open:
+                channel.basic_ack(delivery_tag=method.delivery_tag)
+                logger.info("Message acknowledged")
 
         except json.JSONDecodeError as decode_error:
             logger.error(f"Failed to decode message JSON: {decode_error}")
             # Reject and don't requeue malformed messages
-            channel.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
+            channel.basic_nack(
+                delivery_tag=method.delivery_tag, requeue=False
+            ) if channel.is_open else None
 
         except requests.exceptions.RequestException as request_error:
             logger.error(f"Failed to send data to API: {request_error}")
@@ -102,7 +103,7 @@ class MessageConsumer:
         """
         logger.info(f"Starting to consume messages from queue: {settings.QUEUE_NAME}")
 
-        # Set QoS to process one message at a time
+        # Dont send messages if im processing something, im busy bro
         self.channel.basic_qos(prefetch_count=1)
 
         # Set up consumer
