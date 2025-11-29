@@ -1,22 +1,13 @@
 """Configuration for the weather data consumer service."""
 
-from __future__ import annotations
-
 from pathlib import Path
 
-from pydantic import ConfigDict
 from pydantic_settings import BaseSettings
 
 
 def _get_project_root() -> Path:
     """
-    Calculate the project root directory.
-
-    Assumes this file is at src/consumer/consumer_app/config.py.
-    Navigates up 3 levels to reach the project root.
-
-    Returns:
-        Path to the project root directory
+    Returns the root of the project
     """
     current_file_dir: Path = Path(__file__).parent.resolve()
     # consumer_app -> consumer -> src -> root
@@ -33,20 +24,16 @@ class Settings(BaseSettings):
 
     # RabbitMQ Configuration
     QUEUE_NAME: str = "weather"
-    """RabbitMQ queue name to consume from"""
 
     RABBIT_HOST: str = "localhost"
-    """RabbitMQ host address"""
 
     # Internal API Configuration
     API_URL: str = "http://localhost:8000/api/weather"
-    """Internal weather API endpoint for posting processed messages"""
 
-    model_config = ConfigDict(
-        env_file=str(_get_project_root() / ".env"),
-        env_file_encoding="utf-8",
-        extra="ignore",
-    )
+    class Config:
+        env_file: str = str(_get_project_root() / ".env")
+        env_file_encoding: str = "utf-8"
+        extra: str = "ignore"
 
 
 settings: Settings = Settings()

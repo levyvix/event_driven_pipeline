@@ -60,6 +60,7 @@ services:
     depends_on:
       rabbit-mq:
         condition: service_healthy
+    restart: on-failure
     networks:
       - weather-network
 
@@ -73,9 +74,13 @@ services:
         RABBIT_HOST: rabbit-mq
         API_URL: http://api:8000/api/weather
     depends_on:
-      - rabbit-mq
-      - api
-      - producer
+      rabbit-mq:
+        condition: service_healthy
+      api:
+        condition: service_started
+      producer:
+        condition: service_started
+    restart: on-failure
     networks:
       - weather-network
 

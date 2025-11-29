@@ -5,7 +5,12 @@ from datetime import datetime, timedelta
 import pika  # rabbimq
 import requests
 from loguru import logger
-from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
+from tenacity import (
+    retry,
+    stop_after_attempt,
+    wait_exponential,
+    retry_if_exception_type,
+)
 
 from .config import settings
 
@@ -29,7 +34,11 @@ class ApiFetcher:
         wait=wait_exponential(multiplier=1, min=1, max=10),
         retry=retry_if_exception_type(pika.exceptions.AMQPConnectionError),
     )
-    def _connect_to_rabbitmq(self) -> tuple[pika.BlockingConnection, pika.adapters.blocking_connection.BlockingChannel]:
+    def _connect_to_rabbitmq(
+        self,
+    ) -> tuple[
+        pika.BlockingConnection, pika.adapters.blocking_connection.BlockingChannel
+    ]:
         """
         Connect to RabbitMQ with exponential backoff retry.
 
@@ -42,18 +51,19 @@ class ApiFetcher:
         Raises:
             pika.exceptions.AMQPConnectionError: If all connection attempts fail
         """
-        try:
-            logger.info("Attempting to connect to RabbitMQ at {host}:{port}", host=settings.RABBIT_HOST, port=5672)
-            connection: pika.BlockingConnection = pika.BlockingConnection(
-                pika.ConnectionParameters(host=settings.RABBIT_HOST)
-            )
-            channel = connection.channel()
-            channel.queue_declare(queue=settings.QUEUE_NAME)
-            logger.success("Successfully connected to RabbitMQ")
-            return connection, channel
-        except pika.exceptions.AMQPConnectionError as e:
-            logger.warning("Failed to connect to RabbitMQ: {error}", error=e)
-            raise
+
+        logger.info(
+            "Attempting to connect to RabbitMQ at {host}:{port}",
+            host=settings.RABBIT_HOST,
+            port=5672,
+        )
+        connection: pika.BlockingConnection = pika.BlockingConnection(
+            pika.ConnectionParameters(host=settings.RABBIT_HOST)
+        )
+        channel = connection.channel()
+        channel.queue_declare(queue=settings.QUEUE_NAME)
+        logger.success("Successfully connected to RabbitMQ")
+        return connection, channel
 
     def get_data(self) -> requests.Response:
         """
@@ -79,6 +89,7 @@ class ApiFetcher:
         )
         logger.info("Received data from API")
         response.raise_for_status()
+        logger.success("Successfully fetched data from API")
         return response
 
     def send_data(self, data: requests.Response) -> None:
@@ -92,7 +103,7 @@ class ApiFetcher:
             Exception: If publishing fails
         """
         logger.info("About to send data to RabbitMQ")
-        logger.debug(data.json())
+        logger.debug(f"Sample data: {data.json()[:10]}")
         self.channel.basic_publish(
             exchange="", routing_key=settings.QUEUE_NAME, body=json.dumps(data.json())
         )

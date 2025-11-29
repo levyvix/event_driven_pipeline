@@ -1,9 +1,9 @@
 """Message consumer for weather data."""
 
 import json
-from typing import Any
 
 import pika
+from pika.adapters.blocking_connection import BlockingChannel
 import requests
 from loguru import logger
 
@@ -25,13 +25,13 @@ class MessageConsumer:
         self.connection: pika.BlockingConnection = pika.BlockingConnection(
             pika.ConnectionParameters(host=settings.RABBIT_HOST)
         )
-        self.channel = self.connection.channel()
+        self.channel: BlockingChannel = self.connection.channel()
         self.channel.queue_declare(queue=settings.QUEUE_NAME)
         logger.success("Connected to RabbitMQ")
 
     def callback(
         self,
-        channel,
+        channel: BlockingChannel,
         method,
         properties,
         body: bytes,
